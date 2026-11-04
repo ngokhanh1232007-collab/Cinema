@@ -200,7 +200,7 @@ public class WebServer {
     }
 
     // =========================================================================
-    // 2. GET /api/customers (Lấy danh sách khách hàng)
+    // 2. /api/customers (GET: Lấy danh sách KH, POST: Thêm khách hàng mới)
     // =========================================================================
     static class CustomersApiHandler implements HttpHandler {
         @Override
@@ -210,17 +210,27 @@ public class WebServer {
                 return;
             }
 
-            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendJsonResponse(exchange, 405, "{\"success\":false,\"message\":\"Method Not Allowed\"}");
+            if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                handleGetCustomers(exchange);
                 return;
             }
 
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                handleCreateCustomer(exchange);
+                return;
+            }
+
+            sendJsonResponse(exchange, 405, "{\"success\":false,\"message\":\"Method Not Allowed\"}");
+        }
+
+        private void handleGetCustomers(HttpExchange exchange) throws IOException {
             List<Customer> list = customerRepository.findAll();
             List<Map<String, Object>> result = new ArrayList<>();
 
             for (Customer c : list) {
                 Map<String, Object> map = new LinkedHashMap<>();
                 map.put("id", c.getId());
+                map.put("customerId", c.getId());
                 map.put("fullName", c.getFullName());
                 map.put("email", c.getEmail());
                 map.put("phone", c.getPhone());
@@ -232,6 +242,89 @@ public class WebServer {
             }
 
             sendJsonResponse(exchange, 200, SimpleJson.toJson(result));
+        }
+
+        private void handleCreateCustomer(HttpExchange exchange) throws IOException {
+            try {
+                String body = readRequestBody(exchange);
+                Map<String, String> json = SimpleJson.parseFlatObject(body);
+
+                String fullName = json.get("fullName");
+                String phone = json.get("phone");
+                String email = json.get("email");
+                String customerTypeStr = json.getOrDefault("customerType", "REGULAR");
+                String studentId = json.get("studentId");
+
+                // Validate họ và tên
+                if (fullName == null || fullName.trim().length() < 2) {
+                    sendJsonResponse(exchange, 400, "{\"success\":false,\"message\":\"Họ và tên khách hàng phải có ít nhất 2 ký tự.\"}");
+                    return;
+                }
+
+                // Validate số điện thoại (phải đủ đúng 10 số)
+                if (phone == null || !phone.trim().matches("^[0-9]{10}$")) {
+                    sendJsonResponse(exchange, 400, "{\"success\":false,\"message\":\"Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số (Ví dụ: 0912345678).\"}");
+                    return;
+                }
+
+                // Validate email
+                if (email == null || !email.trim().matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+                    sendJsonResponse(exchange, 400, "{\"success\":false,\"message\":\"Địa chỉ email không đúng định dạng (Ví dụ: name@email.com).\"}");
+                    return;
+                }
+
+                // Kiểm tra trùng lặp email
+                Customer existingEmail = customerRepository.findByEmail(email.trim());
+                if (existingEmail != null) {
+                    sendJsonResponse(exchange, 400, "{\"success\":false,\"message\":\"Email '" + email.trim() + "' đã được sử dụng bởi khách hàng khác.\"}");
+                    return;
+                }
+
+                // Kiểm tra trùng lặp số điện thoại
+                Customer existingPhone = customerRepository.findByPhone(phone.trim());
+                if (existingPhone != null) {
+                    sendJsonResponse(exchange, 400, "{\"success\":false,\"message\":\"Số điện thoại '" + phone.trim() + "' đã tồn tại trong hệ thống.\"}");
+                    return;
+                }
+
+                // Phân loại khách hàng
+                com.cinema.model.CustomerType type = com.cinema.model.CustomerType.fromString(customerTypeStr);
+                if (type == com.cinema.model.CustomerType.SINH_VIEN && (studentId == null || studentId.trim().isEmpty())) {
+                    studentId = "SV" + (System.currentTimeMillis() % 1000000);
+                }
+
+                Customer customer = new Customer();
+                customer.setFullName(fullName.trim());
+                customer.setPhone(phone.trim());
+                customer.setEmail(email.trim());
+                customer.setCustomerType(type);
+                if (studentId != null && !studentId.trim().isEmpty()) {
+                    customer.setStudentId(studentId.trim().toUpperCase());
+                }
+
+                boolean saved = customerRepository.save(customer);
+                if (!saved || customer.getId() <= 0) {
+                    sendJsonResponse(exchange, 500, "{\"success\":false,\"message\":\"Lỗi hệ thống: Không thể lưu khách hàng vào cơ sở dữ liệu MySQL!\"}");
+                    return;
+                }
+
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("success", true);
+                resp.put("message", "Thêm khách hàng '" + customer.getFullName() + "' thành công!");
+                resp.put("id", customer.getId());
+                resp.put("customerId", customer.getId());
+                resp.put("fullName", customer.getFullName());
+                resp.put("email", customer.getEmail());
+                resp.put("phone", customer.getPhone());
+                resp.put("customerType", customer.getCustomerType().getDbValue());
+                resp.put("customerTypeName", customer.getCustomerType().getDisplayName());
+                resp.put("studentId", customer.getStudentId());
+
+                sendJsonResponse(exchange, 201, SimpleJson.toJson(resp));
+
+            } catch (Exception e) {
+                sendJsonResponse(exchange, 500, "{\"success\":false,\"message\":\"Lỗi xử lý tạo khách hàng: " + e.getMessage() + "\"}");
+            }
         }
     }
 
@@ -492,13 +585,12 @@ public class WebServer {
                 switch (methodStr) {
                     case "BANK":
                     case "BANK_TRANSFER":
-                        paymentMethod = new BankTransferPayment("Vietcombank", "0123456789", "CINEMA BOOKING SYSTEM");
+                        paymentMethod = new BankTransferPayment("VietinBank - CN SON LA - HOI SO", "102883583080", "NGO HOANG KHANH");
                         break;
                     case "EWALLET":
                     case "MOMO":
                     case "ZALOPAY":
-                        String phone = (booking.getCustomer() != null) ? booking.getCustomer().getPhone() : "";
-                        paymentMethod = new EWalletPayment("MoMo", phone);
+                        paymentMethod = new EWalletPayment("VietinBank QR", "102883583080");
                         break;
                     case "CASH":
                     default:
@@ -515,11 +607,35 @@ public class WebServer {
                 resp.put("paymentId", payment.getPaymentId());
                 resp.put("paymentCode", payment.getPaymentCode());
                 resp.put("bookingId", bookingId);
+                resp.put("bookingCode", booking.getBookingCode());
+                resp.put("customerName", booking.getCustomer() != null ? booking.getCustomer().getFullName() : "Khách hàng");
+                resp.put("customerType", booking.getCustomer() != null ? booking.getCustomer().getCustomerType().getDisplayName() : "");
                 resp.put("amount", payment.getAmount());
                 resp.put("paymentMethod", paymentMethod.getMethodName());
                 resp.put("status", payment.getStatus());
                 resp.put("paymentTime", payment.getPaymentTimeFormatted());
                 resp.put("exportedDirectory", "exported_tickets/");
+
+                String movieTitle = (booking.getShowtime() != null && booking.getShowtime().getMovie() != null)
+                        ? booking.getShowtime().getMovie().getTitle() : "Phim chiếu rạp";
+                String roomName = (booking.getShowtime() != null && booking.getShowtime().getRoom() != null)
+                        ? booking.getShowtime().getRoom().getRoomName() : "Phòng chiếu";
+                String showTime = (booking.getShowtime() != null)
+                        ? booking.getShowtime().getShowDateFormatted() + " (" + booking.getShowtime().getStartTimeFormatted() + " - " + booking.getShowtime().getEndTimeFormatted() + ")"
+                        : "";
+                List<String> seatsList = new ArrayList<>();
+                List<String> ticketCodesList = new ArrayList<>();
+                if (booking.getTickets() != null) {
+                    for (Ticket t : booking.getTickets()) {
+                        if (t.getSeat() != null) seatsList.add(t.getSeat().getSeatLabel());
+                        ticketCodesList.add(t.getTicketCode());
+                    }
+                }
+                resp.put("movieTitle", movieTitle);
+                resp.put("roomName", roomName);
+                resp.put("showTime", showTime);
+                resp.put("seats", seatsList);
+                resp.put("ticketCodes", ticketCodesList);
 
                 sendJsonResponse(exchange, 200, SimpleJson.toJson(resp));
 

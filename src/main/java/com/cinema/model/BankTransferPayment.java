@@ -21,9 +21,9 @@ public class BankTransferPayment implements PaymentMethod {
      * Constructor mặc định với thông tin ngân hàng mặc định.
      */
     public BankTransferPayment() {
-        this.bankName = "Vietcombank";
-        this.accountNumber = "1234567890";
-        this.accountHolder = "CINEMA BOOKING SYSTEM";
+        this.bankName = "VietinBank - CN SON LA - HOI SO";
+        this.accountNumber = "102883583080";
+        this.accountHolder = "NGO HOANG KHANH";
     }
 
     /**

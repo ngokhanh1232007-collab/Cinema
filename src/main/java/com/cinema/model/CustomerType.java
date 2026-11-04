@@ -69,6 +69,22 @@ public enum CustomerType {
         throw new IllegalArgumentException("Loại khách hàng không hợp lệ: " + dbValue);
     }
 
+    /**
+     * Chuyển đổi linh hoạt từ chuỗi nhập vào (REGULAR, STUDENT, VIP hoặc tiếng Việt).
+     */
+    public static CustomerType fromString(String val) {
+        if (val == null || val.isBlank()) return KHACH_THUONG;
+        String upper = val.trim().toUpperCase();
+        for (CustomerType type : values()) {
+            if (type.name().equalsIgnoreCase(upper) || type.getDbValue().equalsIgnoreCase(upper)) {
+                return type;
+            }
+        }
+        if (upper.contains("SINH") || upper.contains("STUDENT")) return SINH_VIEN;
+        if (upper.contains("VIP")) return VIP;
+        return KHACH_THUONG;
+    }
+
     @Override
     public String toString() {
         return displayName;

@@ -775,7 +775,7 @@
                     const opt = document.createElement('option');
                     opt.value = c.id;
                     opt.textContent = `${c.fullName} (${c.customerTypeName})`;
-                    if (selectedId && (c.id === selectedId || c.customerId === selectedId)) {
+                    if (selectedId && (String(c.id) === String(selectedId) || String(c.customerId) === String(selectedId))) {
                         opt.selected = true;
                         found = true;
                         currentCustomer = c;
@@ -900,8 +900,8 @@
 
         function onCustomerChanged() {
             const select = document.getElementById('customerSelect');
-            const custId = parseInt(select.value);
-            currentCustomer = customers.find(c => c.id === custId);
+            const custId = select.value;
+            currentCustomer = customers.find(c => String(c.id) === String(custId) || String(c.customerId) === String(custId));
             updateCustomerUI();
             updatePriceCalculation();
         }
@@ -1283,7 +1283,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        customerId: currentCustomer.id,
+                        customerId: (currentCustomer.id || currentCustomer.customerId),
                         showtimeId: selectedShowtime.showtimeId,
                         seats: selectedSeats.join(',')
                     })

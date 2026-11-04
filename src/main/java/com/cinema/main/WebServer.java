@@ -98,7 +98,12 @@ public class WebServer {
         // Kiểm tra kết nối MySQL trước
         DatabaseConnection.testConnection();
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        HttpServer server;
+        try {
+            server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
+        } catch (Exception e) {
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        }
 
         // 1. Phục vụ file tĩnh (Web Frontend)
         server.createContext("/", new StaticFileHandler());
@@ -492,6 +497,9 @@ public class WebServer {
             }
 
             try {
+                System.out.printf("[WebServer] Nhận yêu cầu POST /api/bookings: customerId=%d, showtimeId=%d, seats=%s%n",
+                        customerId, showtimeId, seatLabels);
+
                 // Gọi BookingService để thực thi kiểm tra 7 Business Rules và tính giá đa hình
                 Booking booking = bookingService.bookTickets(customerId, showtimeId, seatLabels);
 
@@ -522,12 +530,16 @@ public class WebServer {
 
             } catch (BusinessException e) {
                 // Trả về thông báo lỗi vi phạm Business Rule rõ ràng
+                System.err.println("[WebServer] Lỗi nghiệp vụ khi đặt vé: " + e.getMessage());
+                e.printStackTrace();
                 Map<String, Object> err = new LinkedHashMap<>();
                 err.put("success", false);
                 err.put("errorCode", e.getErrorCode());
                 err.put("message", e.getMessage());
                 sendJsonResponse(exchange, 400, SimpleJson.toJson(err));
             } catch (Exception e) {
+                System.err.println("[WebServer] Lỗi hệ thống khi đặt vé: " + e.getMessage());
+                e.printStackTrace();
                 Map<String, Object> err = new LinkedHashMap<>();
                 err.put("success", false);
                 err.put("errorCode", "SERVER_ERROR");

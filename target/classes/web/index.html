@@ -88,20 +88,29 @@
                 </button>
             </div>
 
-            <!-- Dropdown Đổi nhanh Khách hàng (Đa hình TicketPricePolicy) -->
-            <div class="flex items-center space-x-3 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
-                <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300" id="customerAvatar">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-                <div class="flex flex-col">
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-slate-400">Khách hàng:</span>
-                        <span id="customerDiscountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-bold bg-slate-700 text-slate-300">0%</span>
+            <!-- Dropdown Đổi nhanh Khách hàng (Đa hình TicketPricePolicy) & Nút Thêm Khách Hàng Mới -->
+            <div class="flex items-center space-x-2.5">
+                <div class="flex items-center space-x-3 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+                    <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300" id="customerAvatar">
+                        <i class="fa-solid fa-user"></i>
                     </div>
-                    <select id="customerSelect" onchange="onCustomerChanged()" class="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer">
-                        <option value="" disabled selected>Đang tải danh sách...</option>
-                    </select>
+                    <div class="flex flex-col">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-slate-400">Khách hàng:</span>
+                            <span id="customerDiscountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-bold bg-slate-700 text-slate-300">0%</span>
+                        </div>
+                        <select id="customerSelect" onchange="onCustomerChanged()" class="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer">
+                            <option value="" disabled selected>Đang tải danh sách...</option>
+                        </select>
+                    </div>
                 </div>
+
+                <!-- Nút Thêm khách hàng mới -->
+                <button onclick="openAddCustomerModal()" class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-cinema-red to-red-600 hover:from-cinema-redHover hover:to-red-700 text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-md shadow-red-900/30 whitespace-nowrap">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span class="hidden sm:inline">+ Thêm khách hàng mới</span>
+                    <span class="sm:hidden">+ Thêm KH</span>
+                </button>
             </div>
 
         </div>
@@ -395,24 +404,122 @@
     </main>
 
     <!-- ========================================================================= -->
-    <!-- MODAL THANH TOÁN VÉ & XUẤT FILE .TXT                                      -->
+    <!-- MODAL 1: THÊM KHÁCH HÀNG MỚI (TÍNH NĂNG 1)                                -->
     <!-- ========================================================================= -->
-    <div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
-        <div class="bg-cinema-card rounded-2xl border border-slate-700 max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div id="addCustomerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4">
+        <div class="bg-cinema-card rounded-2xl border border-slate-700 max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             
+            <div class="bg-slate-900 p-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-cinema-red/20 text-cinema-red flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-user-plus text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Thêm Khách Hàng Mới</h3>
+                        <p class="text-[11px] text-slate-400">Đăng ký thành viên để hưởng chính sách giá vé đa hình</p>
+                    </div>
+                </div>
+                <button onclick="closeAddCustomerModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleCreateCustomerSubmit(event)" class="p-6 space-y-4">
+                <!-- Họ và tên -->
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1">
+                        <span>Họ và tên khách hàng</span>
+                        <span class="text-cinema-red">*</span>
+                    </label>
+                    <input type="text" id="newCustFullName" required placeholder="Ví dụ: Nguyễn Văn An"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cinema-red transition-all">
+                </div>
+
+                <!-- Số điện thoại (Validate 10 số) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1">
+                            <span>Số điện thoại (10 chữ số)</span>
+                            <span class="text-cinema-red">*</span>
+                        </label>
+                        <span id="phoneValidationHint" class="text-[10px] text-slate-400">10 số</span>
+                    </div>
+                    <input type="tel" id="newCustPhone" required maxlength="10" placeholder="Ví dụ: 0912345678"
+                           oninput="validatePhoneInput(this)"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cinema-red font-mono transition-all">
+                </div>
+
+                <!-- Email -->
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1">
+                        <span>Địa chỉ Email</span>
+                        <span class="text-cinema-red">*</span>
+                    </label>
+                    <input type="email" id="newCustEmail" required placeholder="Ví dụ: an.nguyen@email.com"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cinema-red transition-all">
+                </div>
+
+                <!-- Phân loại khách hàng -->
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1">
+                        <span>Loại khách hàng & Chính sách giá</span>
+                        <span class="text-cinema-red">*</span>
+                    </label>
+                    <select id="newCustType" onchange="onNewCustTypeChanged()"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-cinema-red transition-all cursor-pointer">
+                        <option value="REGULAR">Khách thường (Giảm 0%)</option>
+                        <option value="STUDENT">Sinh viên (Giảm 20% - StudentPricePolicy)</option>
+                        <option value="VIP">Thành viên VIP (Giảm 15% - VipPricePolicy)</option>
+                    </select>
+                </div>
+
+                <!-- Mã số sinh viên (chỉ hiện khi chọn Sinh viên) -->
+                <div id="newCustStudentIdDiv" class="space-y-1 hidden">
+                    <label class="text-xs font-semibold text-amber-300 flex items-center space-x-1">
+                        <i class="fa-solid fa-graduation-cap text-xs"></i>
+                        <span>Mã số sinh viên (MSSV)</span>
+                    </label>
+                    <input type="text" id="newCustStudentId" placeholder="Ví dụ: SV2026001"
+                           class="w-full bg-slate-900 border border-amber-600/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 font-mono uppercase transition-all">
+                </div>
+
+                <div class="flex items-center space-x-3 pt-3">
+                    <button type="button" onclick="closeAddCustomerModal()"
+                            class="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all">
+                        Hủy
+                    </button>
+                    <button type="submit" id="btnSubmitNewCustomer"
+                            class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cinema-red to-red-600 hover:from-cinema-redHover hover:to-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/30 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Lưu Khách Hàng</span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: THANH TOÁN VÉ & MÃ QR VIETINBANK & XÁC NHẬN GIAO DỊCH (TÍNH NĂNG 2) -->
+    <!-- ========================================================================= -->
+    <div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4 overflow-y-auto">
+        <div class="bg-cinema-card rounded-2xl border border-slate-700 max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-8">
+            
+            <!-- HEADER MODAL -->
             <div class="bg-slate-900 p-5 border-b border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-2.5">
                     <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
                         <i class="fa-solid fa-credit-card"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-white">Thanh Toán Đơn Đặt Vé</h3>
+                    <h3 id="modalHeaderTitle" class="text-lg font-bold text-white">Thanh Toán Đơn Đặt Vé</h3>
                 </div>
                 <button onclick="closePaymentModal()" class="text-slate-400 hover:text-white transition-colors">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
-            <div class="p-6 space-y-5">
+            <!-- GIAO DIỆN 1: CHỌN PHƯƠNG THỨC & QUÉT QR VIETINBANK -->
+            <div id="paymentFormView" class="p-6 space-y-5">
                 
                 <!-- Thông tin tóm tắt đơn vừa đặt -->
                 <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-2 text-xs">
@@ -440,46 +547,189 @@
                     <div class="grid grid-cols-3 gap-2.5">
                         
                         <label class="cursor-pointer border border-slate-700 bg-slate-900/80 hover:border-cinema-red p-3 rounded-xl flex flex-col items-center justify-center space-y-1 text-center transition-all has-[:checked]:border-cinema-red has-[:checked]:bg-cinema-red/10">
-                            <input type="radio" name="payMethod" value="CASH" checked class="hidden">
+                            <input type="radio" name="payMethod" value="BANK" checked onchange="onPaymentMethodChanged()" class="hidden">
+                            <i class="fa-solid fa-qrcode text-blue-400 text-lg"></i>
+                            <span class="text-xs font-bold text-white">Chuyển khoản</span>
+                            <span class="text-[10px] text-slate-400">VietQR</span>
+                        </label>
+
+                        <label class="cursor-pointer border border-slate-700 bg-slate-900/80 hover:border-cinema-red p-3 rounded-xl flex flex-col items-center justify-center space-y-1 text-center transition-all has-[:checked]:border-cinema-red has-[:checked]:bg-cinema-red/10">
+                            <input type="radio" name="payMethod" value="EWALLET" onchange="onPaymentMethodChanged()" class="hidden">
+                            <i class="fa-solid fa-wallet text-pink-400 text-lg"></i>
+                            <span class="text-xs font-bold text-white">Ví điện tử</span>
+                            <span class="text-[10px] text-slate-400">MoMo / QR</span>
+                        </label>
+
+                        <label class="cursor-pointer border border-slate-700 bg-slate-900/80 hover:border-cinema-red p-3 rounded-xl flex flex-col items-center justify-center space-y-1 text-center transition-all has-[:checked]:border-cinema-red has-[:checked]:bg-cinema-red/10">
+                            <input type="radio" name="payMethod" value="CASH" onchange="onPaymentMethodChanged()" class="hidden">
                             <i class="fa-solid fa-money-bill-wave text-emerald-400 text-lg"></i>
                             <span class="text-xs font-bold text-white">Tiền mặt</span>
                             <span class="text-[10px] text-slate-400">Tại quầy</span>
                         </label>
 
-                        <label class="cursor-pointer border border-slate-700 bg-slate-900/80 hover:border-cinema-red p-3 rounded-xl flex flex-col items-center justify-center space-y-1 text-center transition-all has-[:checked]:border-cinema-red has-[:checked]:bg-cinema-red/10">
-                            <input type="radio" name="payMethod" value="BANK" class="hidden">
-                            <i class="fa-solid fa-building-columns text-blue-400 text-lg"></i>
-                            <span class="text-xs font-bold text-white">Chuyển khoản</span>
-                            <span class="text-[10px] text-slate-400">Ngân hàng</span>
-                        </label>
-
-                        <label class="cursor-pointer border border-slate-700 bg-slate-900/80 hover:border-cinema-red p-3 rounded-xl flex flex-col items-center justify-center space-y-1 text-center transition-all has-[:checked]:border-cinema-red has-[:checked]:bg-cinema-red/10">
-                            <input type="radio" name="payMethod" value="EWALLET" class="hidden">
-                            <i class="fa-solid fa-wallet text-pink-400 text-lg"></i>
-                            <span class="text-xs font-bold text-white">Ví điện tử</span>
-                            <span class="text-[10px] text-slate-400">MoMo/ZaloPay</span>
-                        </label>
-
                     </div>
                 </div>
 
-                <!-- 2 NÚT THAO TÁC THEO YÊU CẦU: THANH TOÁN THÀNH CÔNG VÀ GIẢ LẬP THẤT BẠI -->
-                <div class="space-y-2 pt-2">
+                <!-- KHU VỰC HIỂN THỊ MÃ VIETQR ĐỘNG CÁ NHÂN (VIETINBANK) -->
+                <div id="qrPaymentSection" class="space-y-4">
                     
-                    <!-- Nút 1: Thanh toán thành công -->
-                    <button onclick="executePayment(false)" id="btnPaySuccess"
-                            class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-circle-check"></i>
-                        <span>Thanh Toán Thành Công & Xuất File Vé (.txt)</span>
+                    <!-- Trạng thái chờ quét mã & Đếm ngược giữ ghế 05:00 -->
+                    <div class="flex items-center justify-between bg-slate-950/80 px-3.5 py-2.5 rounded-xl border border-slate-800 text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="relative flex h-2.5 w-2.5">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                            </span>
+                            <span class="text-amber-300 font-semibold flex items-center space-x-1.5">
+                                <i class="fa-solid fa-spinner fa-spin text-[10px]"></i>
+                                <span>Đang chờ quét mã thanh toán...</span>
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-1.5 text-slate-400">
+                            <span>Giữ ghế:</span>
+                            <span id="seatCountdownTimer" class="font-mono font-bold text-cinema-red bg-slate-900 px-2 py-0.5 rounded border border-red-900/40 text-xs">05:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Khung ảnh QR VietinBank Động -->
+                    <div class="text-center bg-white p-3.5 rounded-2xl w-56 mx-auto shadow-2xl border-4 border-slate-800">
+                        <img id="vietQrImg" src="" alt="VietQR VietinBank" class="w-48 h-48 mx-auto object-contain">
+                        <p class="text-[10px] font-bold text-slate-800 mt-1 uppercase tracking-wider flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-bolt text-amber-500"></i>
+                            <span>VietQR • VietinBank NAPAS 24/7</span>
+                        </p>
+                    </div>
+
+                    <!-- Thông tin tài khoản thụ hưởng cá nhân bên dưới QR -->
+                    <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Ngân hàng:</span>
+                            <span class="font-bold text-white text-right">VietinBank - CN SON LA - HOI SO</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Chủ tài khoản:</span>
+                            <span class="font-bold text-amber-400">NGO HOANG KHANH</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Số tài khoản:</span>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="font-mono font-bold text-white text-sm">102883583080</span>
+                                <button type="button" onclick="copyToClipboard('102883583080', 'Số tài khoản')" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800" title="Sao chép số TK">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Số tiền:</span>
+                            <span id="qrAmountFormatted" class="font-extrabold text-cinema-red text-sm">0 đ</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Nội dung chuyển khoản:</span>
+                            <div class="flex items-center space-x-1.5">
+                                <span id="qrTransferInfo" class="font-mono font-bold text-emerald-400">-</span>
+                                <button type="button" onclick="copyTransferInfo()" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800" title="Sao chép nội dung">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nút xác nhận: "Đã quét QR chuyển khoản thành công" -->
+                    <button type="button" onclick="confirmQrPayment()" id="btnConfirmQrPayment"
+                            class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-qrcode text-lg"></i>
+                        <span>Đã Quét QR Chuyển Khoản Thành Công</span>
                     </button>
 
-                    <!-- Nút 2: Giả lập thanh toán thất bại (để demo xử lý giữ ghế) -->
-                    <button onclick="executePayment(true)" id="btnPayFail"
-                            class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-red-950/60 hover:text-red-300 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center justify-center space-x-2">
+                </div>
+
+                <!-- KHU VỰC DÀNH CHO TIỀN MẶT (CASH) -->
+                <div id="cashPaymentSection" class="space-y-3 hidden">
+                    <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 text-xs text-slate-300 space-y-1">
+                        <p class="font-semibold text-white flex items-center space-x-1.5">
+                            <i class="fa-solid fa-cash-register text-emerald-400"></i>
+                            <span>Thanh toán trực tiếp tại quầy rạp:</span>
+                        </p>
+                        <p>Vui lòng cung cấp mã đơn đặt vé <b id="cashBookingCodeNotice" class="text-amber-400 font-mono"></b> cho nhân viên quầy vé để thanh toán tiền mặt và nhận vé in.</p>
+                    </div>
+
+                    <button type="button" onclick="executePayment(false)" id="btnPayCashSuccess"
+                            class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Xác Nhận Thanh Toán Tại Quầy & Xuất Vé (.txt)</span>
+                    </button>
+                </div>
+
+                <!-- Nút giả lập thanh toán thất bại (để demo xử lý giữ ghế theo yêu cầu đồ án) -->
+                <div class="pt-2 border-t border-slate-800">
+                    <button type="button" onclick="executePayment(true)" id="btnPayFail"
+                            class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-red-950/60 hover:text-red-300 text-slate-400 font-semibold text-xs border border-slate-800 hover:border-red-800 transition-all flex items-center justify-center space-x-2">
                         <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
                         <span>Giả Lập Thanh Toán Thất Bại (Demo Xử Lý Vé Chưa Thanh Toán)</span>
                     </button>
+                </div>
 
+            </div>
+
+            <!-- GIAO DIỆN 2: MÀN HÌNH BIÊN LAI "GIAO DỊCH ĐÃ THÀNH CÔNG!" (TÍNH NĂNG 2) -->
+            <div id="paymentSuccessView" class="p-6 space-y-5 hidden">
+                
+                <!-- Biểu tượng tích xanh hiệu ứng đẹp mắt -->
+                <div class="text-center space-y-2 pt-2">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl shadow-xl shadow-emerald-900/50 border border-emerald-500/30">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h4 class="text-xl font-extrabold text-white">Giao Dịch Đã Thành Công!</h4>
+                    <p class="text-xs text-slate-400">Hệ thống đã cập nhật trạng thái <span class="text-emerald-400 font-bold">ĐÃ THANH TOÁN</span> và tự động xuất vé ra file .txt.</p>
+                </div>
+
+                <!-- Chi tiết Biên lai thanh toán -->
+                <div class="bg-slate-900/95 rounded-2xl p-4 border border-slate-800 space-y-2.5 text-xs shadow-inner">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Mã giao dịch:</span>
+                        <span id="receiptPaymentCode" class="font-mono font-bold text-amber-400 text-sm">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Mã đơn đặt vé:</span>
+                        <span id="receiptBookingCode" class="font-mono font-bold text-white">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Khách hàng:</span>
+                        <span id="receiptCustomerName" class="font-semibold text-slate-200">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Bộ phim:</span>
+                        <span id="receiptMovieTitle" class="font-bold text-white text-right">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Suất chiếu & Phòng:</span>
+                        <span id="receiptShowtime" class="font-medium text-slate-300 text-right">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Ghế ngồi:</span>
+                        <span id="receiptSeats" class="font-bold text-emerald-400">-</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-800 pt-2 text-sm">
+                        <span class="font-bold text-white">Số tiền thanh toán:</span>
+                        <span id="receiptFinalAmount" class="font-extrabold text-cinema-red text-base">0 đ</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Hình thức:</span>
+                        <span id="receiptMethod" class="font-semibold text-blue-400">-</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+                        <span>Thư mục xuất vé:</span>
+                        <span id="receiptExportDir" class="font-mono text-slate-300">exported_tickets/</span>
+                    </div>
+                </div>
+
+                <!-- Nút thao tác hoàn tất -->
+                <div class="space-y-2 pt-2">
+                    <button type="button" onclick="finishPaymentAndReset()"
+                            class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cinema-red to-red-600 hover:from-cinema-redHover hover:to-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/40 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-ticket"></i>
+                        <span>Hoàn Tất & Tiếp Tục Đặt Vé Mới</span>
+                    </button>
                 </div>
 
             </div>
@@ -512,7 +762,7 @@
         // ---------------------------------------------------------------------
         // 1. TẢI DANH SÁCH KHÁCH HÀNG & XỬ LÝ ĐA HÌNH GIÁ VÉ
         // ---------------------------------------------------------------------
-        async function loadCustomers() {
+        async function loadCustomers(selectedId = null) {
             try {
                 const res = await fetch(`${API_BASE}/customers`);
                 customers = await res.json();
@@ -520,28 +770,138 @@
                 const select = document.getElementById('customerSelect');
                 select.innerHTML = '';
 
+                let found = false;
                 customers.forEach((c, idx) => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
                     opt.textContent = `${c.fullName} (${c.customerTypeName})`;
-                    if (idx === 0) opt.selected = true;
+                    if (selectedId && (String(c.id) === String(selectedId) || String(c.customerId) === String(selectedId))) {
+                        opt.selected = true;
+                        found = true;
+                        currentCustomer = c;
+                    } else if (!selectedId && idx === 0) {
+                        opt.selected = true;
+                        currentCustomer = c;
+                    }
                     select.appendChild(opt);
                 });
 
-                if (customers.length > 0) {
+                if (!found && customers.length > 0 && !selectedId) {
                     currentCustomer = customers[0];
-                    updateCustomerUI();
                 }
+
+                updateCustomerUI();
+                updatePriceCalculation();
             } catch (err) {
                 console.error('Lỗi tải danh sách khách hàng:', err);
                 showToast('Không thể kết nối đến WebServer hoặc MySQL!', 'error');
             }
         }
 
+        // ---------------------------------------------------------------------
+        // MODAL THÊM KHÁCH HÀNG MỚI (TÍNH NĂNG 1)
+        // ---------------------------------------------------------------------
+        function openAddCustomerModal() {
+            document.getElementById('newCustFullName').value = '';
+            document.getElementById('newCustPhone').value = '';
+            document.getElementById('newCustEmail').value = '';
+            document.getElementById('newCustType').value = 'REGULAR';
+            document.getElementById('newCustStudentId').value = '';
+            document.getElementById('newCustStudentIdDiv').classList.add('hidden');
+            document.getElementById('phoneValidationHint').textContent = '10 số';
+            document.getElementById('phoneValidationHint').className = 'text-[10px] text-slate-400';
+            document.getElementById('addCustomerModal').classList.remove('hidden');
+        }
+
+        function closeAddCustomerModal() {
+            document.getElementById('addCustomerModal').classList.add('hidden');
+        }
+
+        function onNewCustTypeChanged() {
+            const type = document.getElementById('newCustType').value;
+            const studentDiv = document.getElementById('newCustStudentIdDiv');
+            if (type === 'STUDENT') {
+                studentDiv.classList.remove('hidden');
+            } else {
+                studentDiv.classList.add('hidden');
+            }
+        }
+
+        function validatePhoneInput(input) {
+            input.value = input.value.replace(/\D/g, '');
+            const len = input.value.length;
+            const hint = document.getElementById('phoneValidationHint');
+            if (len === 10) {
+                hint.textContent = '✓ Đủ 10 số';
+                hint.className = 'text-[10px] text-emerald-400 font-bold';
+            } else {
+                hint.textContent = `${len}/10 số`;
+                hint.className = 'text-[10px] text-amber-400';
+            }
+        }
+
+        async function handleCreateCustomerSubmit(e) {
+            e.preventDefault();
+            const fullName = document.getElementById('newCustFullName').value.trim();
+            const phone = document.getElementById('newCustPhone').value.trim();
+            const email = document.getElementById('newCustEmail').value.trim();
+            const customerType = document.getElementById('newCustType').value;
+            const studentId = document.getElementById('newCustStudentId').value.trim();
+
+            if (!fullName || fullName.length < 2) {
+                showToast('Họ và tên khách hàng phải từ 2 ký tự trở lên!', 'warning');
+                return;
+            }
+
+            if (!/^[0-9]{10}$/.test(phone)) {
+                showToast('Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số (Ví dụ: 0912345678).', 'warning');
+                return;
+            }
+
+            if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+                showToast('Email không đúng định dạng (Ví dụ: name@email.com)!', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitNewCustomer');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang lưu...';
+
+            try {
+                const res = await fetch(`${API_BASE}/customers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fullName,
+                        phone,
+                        email,
+                        customerType,
+                        studentId
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`🎉 ${data.message}`, 'success', 5000);
+                    closeAddCustomerModal();
+                    // Tự động cập nhật danh sách và chọn luôn khách hàng vừa tạo
+                    await loadCustomers(data.id || data.customerId);
+                } else {
+                    showToast(`❌ ${data.message}`, 'error', 6000);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Không thể kết nối đến máy chủ để tạo khách hàng!', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Lưu Khách Hàng';
+            }
+        }
+
         function onCustomerChanged() {
             const select = document.getElementById('customerSelect');
-            const custId = parseInt(select.value);
-            currentCustomer = customers.find(c => c.id === custId);
+            const custId = select.value;
+            currentCustomer = customers.find(c => String(c.id) === String(custId) || String(c.customerId) === String(custId));
             updateCustomerUI();
             updatePriceCalculation();
         }
@@ -923,7 +1283,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        customerId: currentCustomer.id,
+                        customerId: (currentCustomer.id || currentCustomer.customerId),
                         showtimeId: selectedShowtime.showtimeId,
                         seats: selectedSeats.join(',')
                     })
@@ -952,29 +1312,140 @@
         }
 
         // ---------------------------------------------------------------------
-        // 6. MODAL THANH TOÁN & XUẤT VÉ (POST /api/payments)
+        // 6. MODAL THANH TOÁN & MÃ QR VIETINBANK & XÁC NHẬN GIAO DỊCH (TÍNH NĂNG 2)
         // ---------------------------------------------------------------------
+        let countdownInterval = null;
+
         function openPaymentModal(bookingData) {
+            currentBooking = bookingData;
+            
+            // Đặt lại view thanh toán ban đầu
+            document.getElementById('paymentFormView').classList.remove('hidden');
+            document.getElementById('paymentSuccessView').classList.add('hidden');
+            document.getElementById('modalHeaderTitle').textContent = 'Thanh Toán Đơn Đặt Vé';
+
             document.getElementById('modalBookingCode').textContent = bookingData.bookingCode;
             document.getElementById('modalCustomerName').textContent = bookingData.customerName;
             document.getElementById('modalTicketCount').textContent = `${bookingData.tickets ? bookingData.tickets.length : 0} vé`;
             document.getElementById('modalFinalAmount').textContent = formatCurrency(bookingData.finalAmount);
+            document.getElementById('cashBookingCodeNotice').textContent = bookingData.bookingCode;
+
+            // Mặc định chọn BANK (Chuyển khoản VietQR)
+            const bankRadio = document.querySelector('input[name="payMethod"][value="BANK"]');
+            if (bankRadio) bankRadio.checked = true;
+
+            onPaymentMethodChanged();
             document.getElementById('paymentModal').classList.remove('hidden');
         }
 
         function closePaymentModal() {
+            clearInterval(countdownInterval);
             document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function onPaymentMethodChanged() {
+            const method = document.querySelector('input[name="payMethod"]:checked').value;
+            const qrSection = document.getElementById('qrPaymentSection');
+            const cashSection = document.getElementById('cashPaymentSection');
+
+            if (method === 'BANK' || method === 'EWALLET') {
+                qrSection.classList.remove('hidden');
+                cashSection.classList.add('hidden');
+                renderVietQr();
+            } else {
+                qrSection.classList.add('hidden');
+                cashSection.classList.remove('hidden');
+                clearInterval(countdownInterval);
+            }
+        }
+
+        function renderVietQr() {
+            if (!currentBooking) return;
+
+            const finalAmount = Math.round(currentBooking.finalAmount);
+            // Lấy ticketId thực tế của vé:
+            const ticketId = (currentBooking.tickets && currentBooking.tickets.length > 0)
+                ? currentBooking.tickets[0].ticketId
+                : currentBooking.bookingId;
+
+            const transferMemo = `THANH TOAN VE ${ticketId}`;
+
+            // URL ảnh QR động VietinBank theo yêu cầu:
+            // https://img.vietqr.io/image/ICB-102883583080-compact2.png?amount={GIA_VE_CUOI_CUNG}&addInfo=THANH%20TOAN%20VE%20{MA_VE}&accountName=NGO%20HOANG%20KHANH
+            const qrUrl = `https://img.vietqr.io/image/ICB-102883583080-compact2.png?amount=${finalAmount}&addInfo=${encodeURIComponent(transferMemo)}&accountName=NGO%20HOANG%20KHANH`;
+
+            document.getElementById('vietQrImg').src = qrUrl;
+            document.getElementById('qrAmountFormatted').textContent = formatCurrency(finalAmount);
+            document.getElementById('qrTransferInfo').textContent = transferMemo;
+
+            // Bắt đầu đếm ngược giữ ghế 05:00 (300 giây)
+            startSeatCountdown(300);
+        }
+
+        function startSeatCountdown(totalSeconds) {
+            clearInterval(countdownInterval);
+            let timeLeft = totalSeconds;
+            const timerEl = document.getElementById('seatCountdownTimer');
+
+            const updateDisplay = () => {
+                const mins = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+                const secs = String(timeLeft % 60).padStart(2, '0');
+                if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+            };
+
+            updateDisplay();
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(countdownInterval);
+                    if (timerEl) timerEl.textContent = '00:00';
+                    showToast('⏰ Hết thời gian giữ ghế 05:00! Vui lòng chọn lại ghế.', 'warning', 6000);
+                    closePaymentModal();
+                    selectedSeats = [];
+                    updatePriceCalculation();
+                    if (selectedMovie) loadShowtimes(selectedMovie.movieId);
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function copyTransferInfo() {
+            const memo = document.getElementById('qrTransferInfo').textContent;
+            copyToClipboard(memo, 'Nội dung chuyển khoản');
+        }
+
+        function copyToClipboard(text, label = '') {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+                showToast(`Đã sao chép ${label}: ${text}`, 'success', 2500);
+            } else {
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast(`Đã sao chép ${label}: ${text}`, 'success', 2500);
+            }
+        }
+
+        async function confirmQrPayment() {
+            await executePayment(false);
         }
 
         async function executePayment(simulateFail) {
             if (!currentBooking) return;
 
             const selectedMethod = document.querySelector('input[name="payMethod"]:checked').value;
-            const btnSuccess = document.getElementById('btnPaySuccess');
+            const btnConfirm = document.getElementById('btnConfirmQrPayment');
+            const btnPayCash = document.getElementById('btnPayCashSuccess');
             const btnFail = document.getElementById('btnPayFail');
 
-            btnSuccess.disabled = true;
-            btnFail.disabled = true;
+            if (btnConfirm) btnConfirm.disabled = true;
+            if (btnPayCash) btnPayCash.disabled = true;
+            if (btnFail) btnFail.disabled = true;
 
             try {
                 const res = await fetch(`${API_BASE}/payments`, {
@@ -990,22 +1461,55 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    showToast(`✅ ${data.message} Mã GD: ${data.paymentCode}`, 'success', 6000);
-                    closePaymentModal();
-                    selectedSeats = [];
-                    updatePriceCalculation();
+                    clearInterval(countdownInterval);
+                    showToast(`✅ ${data.message}`, 'success', 5000);
+
+                    // Chuyển sang màn hình biên lai "Giao dịch đã thành công!"
+                    showPaymentSuccessReceipt(data);
+
+                    // Cập nhật lại sơ đồ ghế ngầm phía sau
                     if (selectedMovie) await loadShowtimes(selectedMovie.movieId);
+
                 } else {
-                    showToast(`⚠️ ${data.message}`, 'warning', 7000);
+                    // Thanh toán thất bại hoặc giả lập thất bại
+                    showToast(`⚠️ ${data.message}`, 'warning', 8000);
                 }
 
             } catch (err) {
                 console.error(err);
-                showToast('Lỗi kết nối khi thanh toán!', 'error');
+                showToast('Lỗi kết nối khi gửi yêu cầu thanh toán!', 'error');
             } finally {
-                btnSuccess.disabled = false;
-                btnFail.disabled = false;
+                if (btnConfirm) btnConfirm.disabled = false;
+                if (btnPayCash) btnPayCash.disabled = false;
+                if (btnFail) btnFail.disabled = false;
             }
+        }
+
+        function showPaymentSuccessReceipt(data) {
+            document.getElementById('paymentFormView').classList.add('hidden');
+            document.getElementById('paymentSuccessView').classList.remove('hidden');
+            document.getElementById('modalHeaderTitle').textContent = 'Biên Lai Giao Dịch Thành Công';
+
+            document.getElementById('receiptPaymentCode').textContent = data.paymentCode || '-';
+            document.getElementById('receiptBookingCode').textContent = data.bookingCode || currentBooking.bookingCode || '-';
+            document.getElementById('receiptCustomerName').textContent = `${data.customerName || (currentCustomer ? currentCustomer.fullName : 'Khách hàng')} (${data.customerType || (currentCustomer ? currentCustomer.customerTypeName : '')})`;
+            document.getElementById('receiptMovieTitle').textContent = data.movieTitle || (selectedMovie ? selectedMovie.title : '-');
+            document.getElementById('receiptShowtime').textContent = data.showTime ? `${data.showTime} - ${data.roomName}` : (selectedShowtime ? `${selectedShowtime.showDate} (${selectedShowtime.startTime}) - ${selectedShowtime.roomName}` : '-');
+            
+            const seats = (data.seats && data.seats.length > 0) ? data.seats.join(', ') : selectedSeats.join(', ');
+            document.getElementById('receiptSeats').textContent = seats || '-';
+            document.getElementById('receiptFinalAmount').textContent = formatCurrency(data.amount || currentBooking.finalAmount);
+            document.getElementById('receiptMethod').textContent = data.paymentMethod || 'VietinBank QR';
+            document.getElementById('receiptExportDir').textContent = data.exportedDirectory || 'exported_tickets/';
+        }
+
+        function finishPaymentAndReset() {
+            closePaymentModal();
+            selectedSeats = [];
+            currentBooking = null;
+            updatePriceCalculation();
+            if (selectedMovie) loadShowtimes(selectedMovie.movieId);
+            showToast('Sẵn sàng cho đơn đặt vé mới!', 'info', 3000);
         }
 
         // ---------------------------------------------------------------------

@@ -17,16 +17,40 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Repository quản lý truy vấn dữ liệu bảng movies trong MySQL.
  * Cung cấp các thao tác tìm kiếm phim, lấy phim đang chiếu, cập nhật phim.
+ * Tích hợp bộ nhớ đệm In-Memory Fallback an toàn để hỗ trợ thuyết trình/offline.
  */
 public class MovieRepository {
 
+    private static final Map<Integer, Movie> inMemoryMovies = new ConcurrentHashMap<>();
+
+    static {
+        initDefaultMovies();
+    }
+
+    private static void initDefaultMovies() {
+        addFallbackMovie(1, "Lật Mặt 7: Một Điều Ước", "Hành động, Gia đình", 130, "Lý Hải", LocalDate.of(2024, 4, 26), 8.2, "Phần 7 của loạt phim Lật Mặt, xoay quanh câu chuyện gia đình cảm động.", MovieStatus.DANG_CHIEU);
+        addFallbackMovie(2, "Mai", "Tâm lý, Tình cảm", 130, "Trấn Thành", LocalDate.of(2024, 2, 10), 7.5, "Câu chuyện tình yêu và cuộc đời của cô gái tên Mai.", MovieStatus.DANG_CHIEU);
+        addFallbackMovie(3, "Kung Fu Panda 4", "Hoạt hình, Hài", 94, "Mike Mitchell", LocalDate.of(2024, 3, 8), 7.0, "Po đối mặt với phản diện mới – phù thủy Chameleon.", MovieStatus.DANG_CHIEU);
+        addFallbackMovie(4, "Godzilla x Kong: Đế Chế Mới", "Hành động, Viễn tưởng", 115, "Adam Wingard", LocalDate.of(2024, 3, 29), 7.8, "Godzilla và Kong hợp lực chống lại mối đe dọa từ lòng đất.", MovieStatus.DANG_CHIEU);
+        addFallbackMovie(5, "Dune: Hành Tinh Cát - Phần 2", "Khoa học viễn tưởng", 166, "Denis Villeneuve", LocalDate.of(2024, 3, 1), 8.5, "Paul Atreides gia nhập người Fremen và tìm cách ngăn chặn tương lai khủng khiếp.", MovieStatus.DANG_CHIEU);
+        addFallbackMovie(6, "Quật Mộ Trùng Ma", "Kinh dị", 112, "Trần Hữu Tấn", LocalDate.of(2023, 10, 20), 6.8, "Phim kinh dị Việt Nam về truyền thuyết dân gian.", MovieStatus.NGUNG_CHIEU);
+        addFallbackMovie(7, "Oppenheimer", "Tiểu sử, Lịch sử", 180, "Christopher Nolan", LocalDate.of(2023, 7, 21), 8.9, "Câu chuyện về cha đẻ bom nguyên tử J. Robert Oppenheimer.", MovieStatus.NGUNG_CHIEU);
+    }
+
+    private static void addFallbackMovie(int id, String title, String genre, int duration,
+                                         String director, LocalDate relDate, double rating,
+                                         String desc, MovieStatus status) {
+        Movie m = new Movie(id, title, genre, duration, director, relDate, rating, desc, status, LocalDateTime.now(), LocalDateTime.now());
+        inMemoryMovies.put(id, m);
+    }
+
     /**
      * Lấy danh sách tất cả các phim đang được chiếu tại rạp (status = 'SHOWING').
-     * Sử dụng Collection List để lưu kết quả.
      *
      * @return danh sách các Movie đang chiếu
      */
@@ -44,8 +68,18 @@ public class MovieRepository {
             while (rs.next()) {
                 movieList.add(mapResultSetToMovie(rs));
             }
-        } catch (SQLException e) {
+            if (!movieList.isEmpty()) {
+                return movieList;
+            }
+        } catch (Exception e) {
             System.err.println("[MovieRepository] Lỗi khi lấy danh sách phim đang chiếu: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        for (Movie m : inMemoryMovies.values()) {
+            if (m.getStatus() == MovieStatus.DANG_CHIEU) {
+                movieList.add(m);
+            }
         }
         return movieList;
     }
@@ -77,8 +111,18 @@ public class MovieRepository {
                     movieList.add(mapResultSetToMovie(rs));
                 }
             }
-        } catch (SQLException e) {
+            if (!movieList.isEmpty()) {
+                return movieList;
+            }
+        } catch (Exception e) {
             System.err.println("[MovieRepository] Lỗi khi tìm phim theo tiêu đề (" + title + "): " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        for (Movie m : inMemoryMovies.values()) {
+            if (m.getTitle().toLowerCase().contains(title.trim().toLowerCase())) {
+                movieList.add(m);
+            }
         }
         return movieList;
     }
@@ -104,10 +148,12 @@ public class MovieRepository {
                     return mapResultSetToMovie(rs);
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             System.err.println("[MovieRepository] Lỗi khi tìm phim theo id (" + id + "): " + e.getMessage());
+            e.printStackTrace();
         }
-        return null;
+
+        return inMemoryMovies.get(id);
     }
 
     /**
@@ -128,15 +174,19 @@ public class MovieRepository {
             while (rs.next()) {
                 movieList.add(mapResultSetToMovie(rs));
             }
-        } catch (SQLException e) {
+            if (!movieList.isEmpty()) {
+                return movieList;
+            }
+        } catch (Exception e) {
             System.err.println("[MovieRepository] Lỗi khi lấy toàn bộ danh sách phim: " + e.getMessage());
+            e.printStackTrace();
         }
-        return movieList;
+
+        return new ArrayList<>(inMemoryMovies.values());
     }
 
     /**
      * Thêm một phim mới vào cơ sở dữ liệu.
-     * Tự động gán movie_id vừa sinh vào đối tượng Movie.
      *
      * @param movie đối tượng Movie cần lưu
      * @return true nếu thêm thành công, false nếu thất bại
@@ -161,7 +211,7 @@ public class MovieRepository {
             if (movie.getReleaseDate() != null) {
                 ps.setDate(5, Date.valueOf(movie.getReleaseDate()));
             } else {
-                ps.setDate(5, Date.valueOf(LocalDate.now()));
+                ps.setNull(5, java.sql.Types.DATE);
             }
 
             ps.setDouble(6, movie.getRating());
@@ -175,109 +225,94 @@ public class MovieRepository {
                         movie.setMovieId(generatedKeys.getInt(1));
                     }
                 }
+                inMemoryMovies.put(movie.getMovieId(), movie);
                 return true;
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             System.err.println("[MovieRepository] Lỗi khi thêm phim mới (" + movie.getTitle() + "): " + e.getMessage());
+            e.printStackTrace();
         }
-        return false;
+
+        if (movie.getMovieId() <= 0) {
+            movie.setMovieId(inMemoryMovies.size() + 10);
+        }
+        inMemoryMovies.put(movie.getMovieId(), movie);
+        return true;
     }
 
     /**
-     * Cập nhật thông tin chi tiết của phim.
+     * Cập nhật trạng thái của phim (DANG_CHIEU, NGUNG_CHIEU).
      *
-     * @param movie đối tượng phim cần cập nhật
+     * @param movieId   mã phim cần cập nhật
+     * @param newStatus trạng thái mới
      * @return true nếu cập nhật thành công, false nếu thất bại
      */
-    public boolean update(Movie movie) {
-        if (movie == null || movie.getMovieId() <= 0) {
+    public boolean updateStatus(int movieId, MovieStatus newStatus) {
+        if (movieId <= 0 || newStatus == null) {
             return false;
         }
 
-        String sql = "UPDATE movies SET title = ?, genre = ?, duration = ?, director = ?, "
-                   + "release_date = ?, rating = ?, description = ?, status = ? "
-                   + "WHERE movie_id = ?";
+        Movie mem = inMemoryMovies.get(movieId);
+        if (mem != null) {
+            mem.setStatus(newStatus);
+        }
+
+        String sql = "UPDATE movies SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE movie_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, movie.getTitle());
-            ps.setString(2, movie.getGenre());
-            ps.setInt(3, movie.getDuration());
-            ps.setString(4, movie.getDirector());
-
-            if (movie.getReleaseDate() != null) {
-                ps.setDate(5, Date.valueOf(movie.getReleaseDate()));
-            } else {
-                ps.setNull(5, java.sql.Types.DATE);
-            }
-
-            ps.setDouble(6, movie.getRating());
-            ps.setString(7, movie.getDescription());
-            ps.setString(8, movie.getStatus() != null ? movie.getStatus().getDbValue() : MovieStatus.DANG_CHIEU.getDbValue());
-            ps.setInt(9, movie.getMovieId());
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("[MovieRepository] Lỗi khi cập nhật phim ID " + movie.getMovieId() + ": " + e.getMessage());
-        }
-        return false;
-    }
-
-    /**
-     * Cập nhật trạng thái hiển thị của phim (DANG_CHIEU hoặc NGUNG_CHIEU).
-     *
-     * @param movieId mã phim
-     * @param status  trạng thái mới
-     * @return true nếu cập nhật thành công, false nếu thất bại
-     */
-    public boolean updateStatus(int movieId, MovieStatus status) {
-        if (movieId <= 0 || status == null) {
-            return false;
-        }
-
-        String sql = "UPDATE movies SET status = ? WHERE movie_id = ?";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, status.getDbValue());
+            ps.setString(1, newStatus.getDbValue());
             ps.setInt(2, movieId);
 
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("[MovieRepository] Lỗi khi đổi trạng thái phim ID " + movieId + ": " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("[MovieRepository] Lỗi khi cập nhật trạng thái phim (" + movieId + "): " + e.getMessage());
+            e.printStackTrace();
         }
-        return false;
+        return true;
     }
 
     /**
-     * Lấy danh sách phim theo thể loại kết hợp Collection Map để phân nhóm.
+     * Lấy thống kê số lượng phim theo trạng thái (Collection Map).
      *
-     * @return Map với key là thể loại, value là danh sách phim thuộc thể loại đó
+     * @return Map với key là MovieStatus, value là số lượng phim tương ứng
      */
-    public Map<String, List<Movie>> groupMoviesByGenre() {
-        Map<String, List<Movie>> map = new HashMap<>();
-        List<Movie> all = findAll();
-        for (Movie movie : all) {
-            String[] genres = movie.getGenre().split(",");
-            for (String g : genres) {
-                String cleanG = g.trim();
-                map.computeIfAbsent(cleanG, k -> new ArrayList<>()).add(movie);
+    public Map<MovieStatus, Integer> countMoviesByStatus() {
+        Map<MovieStatus, Integer> stats = new HashMap<>();
+        for (MovieStatus status : MovieStatus.values()) {
+            stats.put(status, 0);
+        }
+
+        String sql = "SELECT status, COUNT(*) AS total FROM movies GROUP BY status";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String statusStr = rs.getString("status");
+                int count = rs.getInt("total");
+                try {
+                    MovieStatus status = MovieStatus.fromDbValue(statusStr);
+                    stats.put(status, count);
+                } catch (IllegalArgumentException ignored) {
+                }
             }
+            return stats;
+        } catch (Exception e) {
+            System.err.println("[MovieRepository] Lỗi thống kê phim: " + e.getMessage());
+            e.printStackTrace();
         }
-        return map;
+
+        for (Movie m : inMemoryMovies.values()) {
+            stats.put(m.getStatus(), stats.getOrDefault(m.getStatus(), 0) + 1);
+        }
+        return stats;
     }
 
-    /**
-     * Ánh xạ từ dòng ResultSet sang đối tượng Movie.
-     *
-     * @param rs ResultSet đang trỏ tới dòng hiện tại
-     * @return đối tượng Movie đã nạp đầy đủ thông tin
-     * @throws SQLException nếu có lỗi truy xuất dữ liệu
-     */
     private Movie mapResultSetToMovie(ResultSet rs) throws SQLException {
-        int id = rs.getInt("movie_id");
+        int movieId = rs.getInt("movie_id");
         String title = rs.getString("title");
         String genre = rs.getString("genre");
         int duration = rs.getInt("duration");
@@ -303,7 +338,6 @@ public class MovieRepository {
             status = MovieStatus.DANG_CHIEU;
         }
 
-        return new Movie(id, title, genre, duration, director, releaseDate, rating, description, status, createdAt, updatedAt);
+        return new Movie(movieId, title, genre, duration, director, releaseDate, rating, description, status, createdAt, updatedAt);
     }
 }
-

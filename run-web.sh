@@ -4,6 +4,7 @@
 # =====================================================================
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_DIR" || exit 1
 BIN_DIR="$PROJECT_DIR/bin"
 MYSQL_JAR="$HOME/.m2/repository/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar"
 

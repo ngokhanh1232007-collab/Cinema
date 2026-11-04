@@ -25,6 +25,8 @@ import com.cinema.utils.Validator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -331,6 +333,86 @@ public class BookingService {
                     "Không tìm thấy đơn đặt vé với mã ID: " + bookingId);
         }
         return booking;
+    }
+
+    /**
+     * Đặt vé theo nhãn một ghế đơn lẻ (ví dụ: "A1").
+     */
+    public Booking bookTickets(int customerId, int showtimeId, String seatNumber) throws BusinessException {
+        if (seatNumber == null || seatNumber.trim().isEmpty()) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Số ghế không được để trống.");
+        }
+        return bookTickets(customerId, showtimeId, Collections.singletonList(seatNumber.trim()));
+    }
+
+    /**
+     * Bí danh đặt một ghế đơn lẻ (bookTicket).
+     */
+    public Booking bookTicket(int customerId, int showtimeId, String seatNumber) throws BusinessException {
+        return bookTickets(customerId, showtimeId, seatNumber);
+    }
+
+    /**
+     * Bí danh đặt danh sách ghế (bookTicket với List<String>).
+     */
+    public Booking bookTicket(int customerId, int showtimeId, List<String> seatLabels) throws BusinessException {
+        return bookTickets(customerId, showtimeId, seatLabels);
+    }
+
+    /**
+     * Đặt vé theo danh sách tham số varargs.
+     */
+    public Booking bookTickets(int customerId, int showtimeId, String... seatLabels) throws BusinessException {
+        if (seatLabels == null || seatLabels.length == 0) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Danh sách ghế không được để trống.");
+        }
+        return bookTickets(customerId, showtimeId, Arrays.asList(seatLabels));
+    }
+
+    /**
+     * Đặt một vé đơn và trả về đối tượng Ticket đại diện.
+     */
+    public Ticket bookSingleTicket(int customerId, int showtimeId, String seatNumber) throws BusinessException {
+        Booking booking = bookTickets(customerId, showtimeId, seatNumber);
+        if (booking.getTickets() != null && !booking.getTickets().isEmpty()) {
+            return booking.getTickets().get(0);
+        }
+        throw new BusinessException(BusinessException.INVALID_INPUT, "Không thể tạo vé cho ghế: " + seatNumber);
+    }
+
+    /**
+     * Bí danh tìm Booking theo mã ID.
+     */
+    public Booking findBookingById(int bookingId) throws BusinessException {
+        return getBookingById(bookingId);
+    }
+
+    /**
+     * Bí danh tìm Booking theo mã code.
+     */
+    public Booking findBookingByCode(String bookingCode) throws BusinessException {
+        return getBookingByCode(bookingCode);
+    }
+
+    /**
+     * Tra cứu vé xem phim theo mã ID vé.
+     */
+    public Ticket getTicketById(int ticketId) throws BusinessException {
+        if (ticketId <= 0) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Mã ID vé phải lớn hơn 0.");
+        }
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Không tìm thấy vé xem phim với mã ID: " + ticketId);
+        }
+        return ticket;
+    }
+
+    /**
+     * Bí danh tìm vé theo mã ID vé.
+     */
+    public Ticket findTicketById(int ticketId) throws BusinessException {
+        return getTicketById(ticketId);
     }
 }
 

@@ -127,6 +127,14 @@ public class Customer extends User {
 
     // ===================== GETTER / SETTER =====================
 
+    public int getCustomerId() {
+        return getId();
+    }
+
+    public void setCustomerId(int customerId) {
+        setId(customerId);
+    }
+
     /**
      * Lấy loại khách hàng.
      *

@@ -1,6 +1,9 @@
 package com.cinema.service;
 
+import com.cinema.model.BankTransferPayment;
 import com.cinema.model.Booking;
+import com.cinema.model.CashPayment;
+import com.cinema.model.EWalletPayment;
 import com.cinema.model.Payment;
 import com.cinema.model.PaymentMethod;
 import com.cinema.model.PaymentStatus;
@@ -61,6 +64,19 @@ public class PaymentService {
      * @throws BusinessException nếu đơn hàng không tồn tại, đã thanh toán, đã hủy, hoặc thanh toán thất bại
      */
     public Payment processPayment(int bookingId, PaymentMethod paymentMethod) throws BusinessException {
+        return processPayment(bookingId, paymentMethod, false);
+    }
+
+    /**
+     * Nghiệp vụ thanh toán cho đơn đặt vé với cờ giả lập thất bại (hỗ trợ kiểm thử/demo).
+     *
+     * @param bookingId     mã đơn đặt vé
+     * @param paymentMethod phương thức thanh toán
+     * @param simulateFail  true để kích hoạt kịch bản thanh toán thất bại
+     * @return đối tượng Payment đã lưu
+     * @throws BusinessException khi xảy ra lỗi hoặc giả lập thất bại
+     */
+    public Payment processPayment(int bookingId, PaymentMethod paymentMethod, boolean simulateFail) throws BusinessException {
 
         // =====================================================================
         // BƯỚC 1: KIỂM TRA ĐƠN ĐẶT VÉ CÓ TỒN TẠI KHÔNG
@@ -107,6 +123,16 @@ public class PaymentService {
 
         System.out.printf("%n[PaymentService] Bắt đầu xử lý thanh toán cho đơn: %s%n", booking.getBookingCode());
         System.out.printf("  Phương thức: %s | Số tiền: %,.0f VND%n", paymentMethod.getMethodName(), finalAmount);
+
+        // Kiểm tra cờ giả lập thanh toán thất bại
+        if (simulateFail) {
+            System.err.printf("[PaymentService] [GIẢ LẬP] Thanh toán đơn hàng %s qua phương thức %s THẤT BẠI.%n",
+                    booking.getBookingCode(), paymentMethod.getMethodName());
+            throw new BusinessException(BusinessException.PAYMENT_FAILED,
+                    "MÔ PHỎNG THANH TOÁN THẤT BẠI: Số dư tài khoản không đủ hoặc thẻ bị từ chối qua "
+                            + paymentMethod.getMethodName() + "! "
+                            + "Hệ thống vẫn giữ ghế tạm (trạng thái CHƯA THANH TOÁN) để quý khách có thể thử lại.");
+        }
 
         // Thực thi đa hình: gọi hàm pay() của đối tượng thanh toán cụ thể
         boolean paymentSuccess = paymentMethod.pay(finalAmount);
@@ -180,6 +206,13 @@ public class PaymentService {
      * @throws BusinessException nếu vé không tồn tại hoặc có lỗi thanh toán
      */
     public Payment processPaymentByTicketId(int ticketId, PaymentMethod paymentMethod) throws BusinessException {
+        return processPaymentByTicketId(ticketId, paymentMethod, false);
+    }
+
+    /**
+     * Thanh toán vé theo mã vé lẻ kèm cờ giả lập thất bại.
+     */
+    public Payment processPaymentByTicketId(int ticketId, PaymentMethod paymentMethod, boolean simulateFail) throws BusinessException {
         if (ticketId <= 0) {
             throw new BusinessException(BusinessException.INVALID_INPUT, "Mã vé phải lớn hơn 0.");
         }
@@ -190,7 +223,49 @@ public class PaymentService {
                     "Không tìm thấy vé xem phim với mã ID: " + ticketId + ". Không thể thanh toán.");
         }
 
-        return processPayment(ticket.getBookingId(), paymentMethod);
+        return processPayment(ticket.getBookingId(), paymentMethod, simulateFail);
+    }
+
+    /**
+     * Bí danh thanh toán đơn đặt vé (pay).
+     */
+    public Payment pay(int bookingId, PaymentMethod paymentMethod) throws BusinessException {
+        return processPayment(bookingId, paymentMethod, false);
+    }
+
+    /**
+     * Bí danh thanh toán đơn đặt vé có cờ giả lập thất bại (pay).
+     */
+    public Payment pay(int bookingId, PaymentMethod paymentMethod, boolean simulateFail) throws BusinessException {
+        return processPayment(bookingId, paymentMethod, simulateFail);
+    }
+
+    /**
+     * Bí danh thanh toán theo vé lẻ (payTicket).
+     */
+    public Payment payTicket(int ticketId, PaymentMethod paymentMethod) throws BusinessException {
+        return processPaymentByTicketId(ticketId, paymentMethod, false);
+    }
+
+    /**
+     * Bí danh thanh toán theo vé lẻ có cờ giả lập thất bại (payTicket).
+     */
+    public Payment payTicket(int ticketId, PaymentMethod paymentMethod, boolean simulateFail) throws BusinessException {
+        return processPaymentByTicketId(ticketId, paymentMethod, simulateFail);
+    }
+
+    /**
+     * Hủy đơn đặt vé theo mã vé lẻ (giải phóng ghế và cập nhật DA_HUY).
+     */
+    public boolean cancelBookingByTicketId(int ticketId) throws BusinessException {
+        if (ticketId <= 0) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Mã vé phải lớn hơn 0.");
+        }
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new BusinessException(BusinessException.INVALID_INPUT, "Không tìm thấy vé với ID: " + ticketId);
+        }
+        return cancelBooking(ticket.getBookingId());
     }
 
     /**

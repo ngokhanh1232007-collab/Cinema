@@ -69,6 +69,19 @@ public class Booking {
     }
 
     /**
+     * Constructor liên kết Entity (Customer, Showtime, Tickets).
+     */
+    public Booking(int bookingId, Customer customer, Showtime showtime, List<Ticket> tickets, PaymentStatus status) {
+        this.bookingId = bookingId;
+        this.customer = customer;
+        this.showtime = showtime;
+        this.tickets = (tickets != null) ? tickets : new ArrayList<>();
+        this.status = (status != null) ? status : PaymentStatus.CHUA_THANH_TOAN;
+        if (customer != null) this.customerId = customer.getId();
+        if (showtime != null) this.showtimeId = showtime.getShowtimeId();
+    }
+
+    /**
      * Constructor với thông tin cơ bản.
      *
      * @param bookingId   mã đơn đặt
@@ -191,6 +204,30 @@ public class Booking {
 
     public void setBookingId(int bookingId) {
         this.bookingId = bookingId;
+    }
+
+    public int getId() {
+        return bookingId;
+    }
+
+    public void setId(int id) {
+        this.bookingId = id;
+    }
+
+    public double getFinalPrice() {
+        return finalAmount;
+    }
+
+    public void setFinalPrice(double finalPrice) {
+        this.finalAmount = finalPrice;
+    }
+
+    public double getTotalPrice() {
+        return totalAmount;
+    }
+
+    public void setTotalPrice(double totalPrice) {
+        this.totalAmount = totalPrice;
     }
 
     public String getBookingCode() {

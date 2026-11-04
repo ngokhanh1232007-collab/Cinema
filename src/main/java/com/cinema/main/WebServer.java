@@ -482,16 +482,9 @@ public class WebServer {
                     throw new BusinessException(BusinessException.INVALID_INPUT, "Mã đơn hàng bookingId hoặc ticketId là bắt buộc.");
                 }
 
-                // Mô phỏng trường hợp thanh toán thất bại theo yêu cầu kiểm thử
-                if (simulateFail) {
-                    throw new BusinessException(BusinessException.PAYMENT_FAILED,
-                            "MÔ PHỎNG THANH TOÁN THẤT BẠI: Số dư tài khoản không đủ hoặc thẻ bị từ chối! "
-                            + "Hệ thống vẫn giữ ghế tạm (trạng thái CHƯA THANH TOÁN) để quý khách có thể thử lại.");
-                }
-
                 Booking booking = ticketRepository.findBookingById(bookingId);
                 if (booking == null) {
-                    throw new BusinessException(BusinessException.BOOKING_NOT_FOUND, "Không tìm thấy đơn hàng #" + bookingId);
+                    throw new BusinessException(BusinessException.BOOKING_NOT_FOUND, "Không tìm thấy đơn đặt vé #" + bookingId);
                 }
 
                 // Áp dụng ĐA HÌNH PaymentMethod
@@ -513,8 +506,8 @@ public class WebServer {
                         break;
                 }
 
-                // Thực hiện thanh toán và tự động xuất vé .txt
-                Payment payment = paymentService.processPayment(bookingId, paymentMethod);
+                // Thực hiện thanh toán và tự động xuất vé .txt (xử lý cả simulateFail qua PaymentService)
+                Payment payment = paymentService.processPayment(bookingId, paymentMethod, simulateFail);
 
                 Map<String, Object> resp = new LinkedHashMap<>();
                 resp.put("success", true);

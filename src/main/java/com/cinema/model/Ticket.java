@@ -93,6 +93,32 @@ public class Ticket {
     }
 
     /**
+     * Constructor liên kết đầy đủ đối tượng Entity (phục vụ repository / service).
+     */
+    public Ticket(int ticketId, Customer customer, Movie movie, Showtime showtime,
+                  Seat seat, double seatPrice, PaymentStatus paymentStatus) {
+        this.ticketId = ticketId;
+        this.customer = customer;
+        this.movie = movie;
+        this.showtime = showtime;
+        this.seat = seat;
+        this.seatPrice = seatPrice;
+        this.paymentStatus = (paymentStatus != null) ? paymentStatus : PaymentStatus.CHUA_THANH_TOAN;
+        if (showtime != null && seat != null) {
+            this.showtimeSeatId = seat.getShowtimeSeatId();
+        }
+    }
+
+    /**
+     * Constructor liên kết đầy đủ kèm mã vé hiển thị.
+     */
+    public Ticket(int ticketId, String ticketCode, Customer customer, Movie movie,
+                  Showtime showtime, Seat seat, double seatPrice, PaymentStatus paymentStatus) {
+        this(ticketId, customer, movie, showtime, seat, seatPrice, paymentStatus);
+        this.ticketCode = ticketCode;
+    }
+
+    /**
      * Trả về thông tin vé dạng hiển thị.
      *
      * @return chuỗi thông tin vé
@@ -114,6 +140,30 @@ public class Ticket {
 
     public void setTicketId(int ticketId) {
         this.ticketId = ticketId;
+    }
+
+    public int getId() {
+        return ticketId;
+    }
+
+    public void setId(int id) {
+        this.ticketId = id;
+    }
+
+    public double getFinalPrice() {
+        return seatPrice;
+    }
+
+    public void setFinalPrice(double finalPrice) {
+        this.seatPrice = finalPrice;
+    }
+
+    public double getPrice() {
+        return seatPrice;
+    }
+
+    public void setPrice(double price) {
+        this.seatPrice = price;
     }
 
     public String getTicketCode() {

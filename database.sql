@@ -1,14 +1,14 @@
 -- =====================================================================
 -- HỆ THỐNG QUẢN LÝ MUA VÉ XEM PHIM CHO SINH VIÊN - NHÓM 06
--- Database: cinema_booking_db
+-- Database: cinema_db (MySQL 8.4)
 -- =====================================================================
 
-DROP DATABASE IF EXISTS cinema_booking_db;
-CREATE DATABASE cinema_booking_db
+DROP DATABASE IF EXISTS cinema_db;
+CREATE DATABASE IF NOT EXISTS cinema_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE cinema_booking_db;
+USE cinema_db;
 
 -- =====================================================================
 -- 1. BẢNG CUSTOMERS (Khách hàng: REGULAR, STUDENT, VIP)

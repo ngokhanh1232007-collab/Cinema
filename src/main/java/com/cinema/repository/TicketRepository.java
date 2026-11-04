@@ -95,6 +95,13 @@ public class TicketRepository {
     }
 
     /**
+     * Phương thức đa hình lưu Booking (bí danh tương thích save).
+     */
+    public boolean save(Booking booking) {
+        return saveBooking(booking);
+    }
+
+    /**
      * Tìm đơn đặt vé theo mã số định danh booking_id.
      * Nạp kèm thông tin khách hàng, suất chiếu và danh sách vé đã đặt.
      *
@@ -245,6 +252,13 @@ public class TicketRepository {
     }
 
     /**
+     * Phương thức đa hình lưu Ticket (bí danh tương thích save).
+     */
+    public boolean save(Ticket ticket) {
+        return saveTicket(ticket);
+    }
+
+    /**
      * Tìm vé theo mã định danh ticket_id.
      * Nạp đầy đủ các đối tượng quan hệ: Customer, Movie, Showtime, Seat, PaymentStatus.
      *
@@ -286,6 +300,27 @@ public class TicketRepository {
             System.err.println("[TicketRepository] Lỗi khi tìm vé theo ID (" + ticketId + "): " + e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * Tìm vé theo ID (bí danh tương thích findTicketById).
+     */
+    public Ticket findTicketById(int ticketId) {
+        return findById(ticketId);
+    }
+
+    /**
+     * Lấy vé theo ID (bí danh tương thích getTicketById).
+     */
+    public Ticket getTicketById(int ticketId) {
+        return findById(ticketId);
+    }
+
+    /**
+     * Lấy đơn đặt theo ID (bí danh tương thích getBookingById).
+     */
+    public Booking getBookingById(int bookingId) {
+        return findBookingById(bookingId);
     }
 
     /**
@@ -362,6 +397,90 @@ public class TicketRepository {
         return list;
     }
 
+    /**
+     * Lấy toàn bộ danh sách vé trong hệ thống.
+     *
+     * @return danh sách vé
+     */
+    public List<Ticket> findAll() {
+        return findAllTickets();
+    }
+
+    /**
+     * Lấy tất cả vé từ cơ sở dữ liệu.
+     *
+     * @return danh sách đối tượng Ticket
+     */
+    public List<Ticket> findAllTickets() {
+        List<Ticket> list = new ArrayList<>();
+        String sql = "SELECT t.ticket_id, t.ticket_code, t.booking_id, t.showtime_seat_id, "
+                   + "       t.seat_price, t.created_at AS ticket_created_at, "
+                   + "       b.booking_code, b.status AS booking_status, "
+                   + "       c.customer_id, c.full_name AS customer_name, c.email AS customer_email, "
+                   + "       c.phone AS customer_phone, c.customer_type, c.student_id, "
+                   + "       s.showtime_id, s.show_date, s.start_time, s.end_time, s.base_price, "
+                   + "       m.movie_id, m.title AS movie_title, m.genre, m.duration, "
+                   + "       r.room_id, r.room_name, "
+                   + "       st.seat_id, st.seat_row, st.seat_number, st.seat_type, "
+                   + "       ss.status AS seat_status "
+                   + "FROM tickets t "
+                   + "JOIN bookings b ON t.booking_id = b.booking_id "
+                   + "JOIN customers c ON b.customer_id = c.customer_id "
+                   + "JOIN showtime_seats ss ON t.showtime_seat_id = ss.showtime_seat_id "
+                   + "JOIN showtimes s ON ss.showtime_id = s.showtime_id "
+                   + "JOIN movies m ON s.movie_id = m.movie_id "
+                   + "JOIN cinema_rooms r ON s.room_id = r.room_id "
+                   + "JOIN seats st ON ss.seat_id = st.seat_id "
+                   + "ORDER BY t.ticket_id ASC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToTicket(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[TicketRepository] Lỗi khi lấy tất cả vé: " + e.getMessage());
+        }
+        return list;
+    }
+
+    /**
+     * Lấy tất cả đơn đặt vé từ cơ sở dữ liệu.
+     *
+     * @return danh sách đối tượng Booking
+     */
+    public List<Booking> findAllBookings() {
+        List<Booking> list = new ArrayList<>();
+        String sql = "SELECT b.booking_id, b.booking_code, b.customer_id, b.showtime_id, "
+                   + "       b.total_amount, b.discount_amount, b.final_amount, b.status, "
+                   + "       b.booking_time, b.updated_at, "
+                   + "       c.full_name AS customer_name, c.email AS customer_email, "
+                   + "       c.phone AS customer_phone, c.customer_type, c.student_id, "
+                   + "       s.show_date, s.start_time, s.end_time, s.base_price, "
+                   + "       m.title AS movie_title, r.room_name "
+                   + "FROM bookings b "
+                   + "JOIN customers c ON b.customer_id = c.customer_id "
+                   + "JOIN showtimes s ON b.showtime_id = s.showtime_id "
+                   + "JOIN movies m ON s.movie_id = m.movie_id "
+                   + "JOIN cinema_rooms r ON s.room_id = r.room_id "
+                   + "ORDER BY b.booking_id DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Booking booking = mapResultSetToBooking(rs);
+                List<Ticket> tickets = findTicketsByBookingId(booking.getBookingId());
+                booking.setTickets(tickets);
+                list.add(booking);
+            }
+        } catch (SQLException e) {
+            System.err.println("[TicketRepository] Lỗi khi lấy danh sách booking: " + e.getMessage());
+        }
+        return list;
+    }
+
     // =========================================================================
     // 3. CÁC THAO TÁC VỚI BẢNG PAYMENTS
     // =========================================================================
@@ -411,6 +530,13 @@ public class TicketRepository {
             System.err.println("[TicketRepository] Lỗi khi lưu payment (" + payment.getPaymentCode() + "): " + e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * Phương thức đa hình lưu Payment (bí danh tương thích save).
+     */
+    public boolean save(Payment payment) {
+        return savePayment(payment);
     }
 
     /**
@@ -531,11 +657,11 @@ public class TicketRepository {
         // Tạo đối tượng Showtime liên kết
         Showtime showtime = new Showtime();
         showtime.setShowtimeId(showtimeId);
-        Date showDate = rs.getDate("show_date");
+        java.sql.Date showDate = rs.getDate("show_date");
         if (showDate != null) showtime.setShowDate(showDate.toLocalDate());
-        Time startTime = rs.getTime("start_time");
+        java.sql.Time startTime = rs.getTime("start_time");
         if (startTime != null) showtime.setStartTime(startTime.toLocalTime());
-        Time endTime = rs.getTime("end_time");
+        java.sql.Time endTime = rs.getTime("end_time");
         if (endTime != null) showtime.setEndTime(endTime.toLocalTime());
         showtime.setBasePrice(rs.getDouble("base_price"));
 
@@ -595,11 +721,11 @@ public class TicketRepository {
         // Suất chiếu
         Showtime showtime = new Showtime();
         showtime.setShowtimeId(rs.getInt("showtime_id"));
-        Date showDate = rs.getDate("show_date");
+        java.sql.Date showDate = rs.getDate("show_date");
         if (showDate != null) showtime.setShowDate(showDate.toLocalDate());
-        Time startTime = rs.getTime("start_time");
+        java.sql.Time startTime = rs.getTime("start_time");
         if (startTime != null) showtime.setStartTime(startTime.toLocalTime());
-        Time endTime = rs.getTime("end_time");
+        java.sql.Time endTime = rs.getTime("end_time");
         if (endTime != null) showtime.setEndTime(endTime.toLocalTime());
         showtime.setBasePrice(rs.getDouble("base_price"));
         showtime.setMovie(movie);

@@ -445,3 +445,4 @@ mvn exec:java -Dexec.mainClass="com.cinema.main.Main"
 > **Chúc Nhóm 06 bảo vệ đồ án thành công và đạt kết quả cao nhất! 🎉**
 
 #Cinema 
+# Cinema 

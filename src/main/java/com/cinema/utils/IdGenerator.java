@@ -75,9 +75,10 @@ public class IdGenerator {
                                                      java.util.function.Consumer<String> dateSetter) {
         String today = LocalDate.now().format(DATE_FORMAT);
 
-        // Nếu sang ngày mới → reset bộ đếm về 0
-        if (!today.equals(lastDate)) {
-            counter.set(0);
+        // Khởi tạo counter dựa trên timestamp nếu là lần đầu hoặc sang ngày mới để không bao giờ bị Duplicate entry trong MySQL
+        if (!today.equals(lastDate) || counter.get() == 0) {
+            int seed = (int) (System.currentTimeMillis() / 1000 % 8000) + 1000;
+            counter.set(seed);
             dateSetter.accept(today);
         }
 

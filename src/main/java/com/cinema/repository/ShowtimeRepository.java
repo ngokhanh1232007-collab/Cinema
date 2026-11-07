@@ -321,10 +321,20 @@ public class ShowtimeRepository {
     }
 
     /**
-     * Sinh sơ đồ 30 ghế mẫu (Phòng 1: Hàng A, B, C thường; D đôi; E VIP) cho trường hợp ngoại tuyến.
+     * Sinh sơ đồ ghế mẫu cho trường hợp ngoại tuyến (Phòng 1: 6 cột, Phòng 2: 5 cột, Phòng 3: 7 cột).
+     * Hàng A, B, C thường; D đôi (+30k); E VIP (+50k).
      */
     private List<Seat> generateFallbackSeats(int showtimeId) {
         List<Seat> seats = new ArrayList<>();
+        Showtime st = inMemoryShowtimes.get(showtimeId);
+        int roomId = (st != null && st.getRoomId() > 0) ? st.getRoomId() : 1;
+        int maxCols = 6;
+        if (roomId == 2) {
+            maxCols = 5;
+        } else if (roomId == 3) {
+            maxCols = 7;
+        }
+
         String[] rows = {"A", "B", "C", "D", "E"};
         int seatCounter = 1;
 
@@ -338,7 +348,7 @@ public class ShowtimeRepository {
                 type = SeatType.GHE_THUONG;
             }
 
-            for (int col = 1; col <= 6; col++) {
+            for (int col = 1; col <= maxCols; col++) {
                 int seatId = seatCounter++;
                 SeatStatus status = SeatStatus.CON_TRONG;
 
@@ -349,7 +359,7 @@ public class ShowtimeRepository {
                     status = SeatStatus.DANG_GIU;
                 }
 
-                Seat s = new Seat(seatId, 1, row, col, type, status, seatId, LocalDateTime.now());
+                Seat s = new Seat(seatId, roomId, row, col, type, status, seatId, LocalDateTime.now());
                 seats.add(s);
             }
         }

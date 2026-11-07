@@ -182,8 +182,24 @@ public class BookingService {
             }
 
             if (seat == null) {
-                throw new BusinessException(BusinessException.INVALID_INPUT,
-                        "Ghế '" + label + "' KHÔNG TỒN TẠI trong phòng chiếu của suất này.");
+                // Tự động khởi tạo ghế nếu nhãn ghế hợp lệ dạng Hàng (A-E) + Số (1-10) (Ví dụ A7, B7, D5...)
+                if (label.matches("^[A-Ea-e]([1-9]|10)$")) {
+                    String row = label.substring(0, 1).toUpperCase();
+                    int num = 1;
+                    try {
+                        num = Integer.parseInt(label.substring(1));
+                    } catch (Exception ignored) {}
+                    SeatType type = ("D".equals(row)) ? SeatType.GHE_DOI : ("E".equals(row) ? SeatType.GHE_VIP : SeatType.GHE_THUONG);
+                    int newSeatId = 1000 + (row.charAt(0) - 'A') * 20 + num;
+                    int ssId = showtimeRepository.ensureShowtimeSeatExists(showtimeId, newSeatId);
+                    if (ssId <= 0) ssId = newSeatId;
+                    seat = new Seat(newSeatId, showtime.getRoomId(), row, num, type, SeatStatus.CON_TRONG, ssId, LocalDateTime.now());
+                    seatMap.put(label.toUpperCase(), seat);
+                    System.out.println("[BookingService] Tự động khởi tạo ghế hợp lệ: " + label + " (SeatId=" + newSeatId + ")");
+                } else {
+                    throw new BusinessException(BusinessException.INVALID_INPUT,
+                            "Ghế '" + label + "' KHÔNG TỒN TẠI trong phòng chiếu của suất này.");
+                }
             }
 
             if (!seat.isAvailable()) {

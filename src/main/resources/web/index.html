@@ -1254,7 +1254,7 @@
         }
 
         // ---------------------------------------------------------------------
-        // 5. GỬI YÊU CẦU ĐẶT VÉ (POST /api/bookings)
+        // 5. GỬI YÊU CẦU ĐẶT VÉ (POST /api/bookings - Hỗ trợ cả 1 ghế hoặc nhiều ghế)
         // ---------------------------------------------------------------------
         async function handleBookingSubmit() {
             if (!currentCustomer) {
@@ -1276,35 +1276,49 @@
 
             const btn = document.getElementById('btnSubmitBooking');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Đang kiểm tra Business Rules...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Đang xử lý đặt vé...';
 
             try {
+                // Gửi linh hoạt cả seats (CSV), seatNumbers (Array), và seatNumber (đơn lẻ)
+                const payload = {
+                    customerId: (currentCustomer.id || currentCustomer.customerId),
+                    showtimeId: selectedShowtime.showtimeId,
+                    seats: selectedSeats.join(','),
+                    seatNumbers: selectedSeats,
+                    seatNumber: selectedSeats.length === 1 ? selectedSeats[0] : undefined
+                };
+
                 const res = await fetch(`${API_BASE}/bookings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        customerId: (currentCustomer.id || currentCustomer.customerId),
-                        showtimeId: selectedShowtime.showtimeId,
-                        seats: selectedSeats.join(',')
-                    })
+                    body: JSON.stringify(payload)
                 });
 
-                const data = await res.json();
+                let data;
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    console.error('Lỗi phân tích JSON từ server:', jsonErr);
+                    showToast('❌ Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại!', 'error');
+                    return;
+                }
 
-                if (data.success) {
+                if (data && data.success) {
                     showToast('🎉 Đặt vé thành công! Vui lòng hoàn tất thanh toán.', 'success');
                     currentBooking = data;
                     openPaymentModal(data);
-                    // Cập nhật lại sơ đồ ghế
-                    await loadShowtimes(selectedMovie.movieId);
+                    // Cập nhật lại sơ đồ ghế ngầm phía sau
+                    if (selectedMovie) {
+                        await loadShowtimes(selectedMovie.movieId);
+                    }
                 } else {
-                    // Hiển thị lỗi bắt được từ BusinessException
-                    showToast(`❌ LỖI NGHIỆP VỤ: ${data.message}`, 'error', 6000);
+                    const errorMsg = (data && data.message) ? data.message : 'Không thể hoàn tất đơn đặt vé.';
+                    showToast(`❌ LỖI NGHIỆP VỤ: ${errorMsg}`, 'error', 6000);
                 }
 
             } catch (err) {
-                console.error(err);
-                showToast('Lỗi máy chủ khi gửi yêu cầu đặt vé!', 'error');
+                console.error('Lỗi khi gửi yêu cầu đặt vé:', err);
+                showToast(`❌ Lỗi kết nối đến máy chủ: ${err.message || 'Vui lòng thử lại!'}`, 'error', 5000);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-lock mr-2"></i>Xác Nhận Đặt Vé Ngay';
@@ -1324,11 +1338,18 @@
             document.getElementById('paymentSuccessView').classList.add('hidden');
             document.getElementById('modalHeaderTitle').textContent = 'Thanh Toán Đơn Đặt Vé';
 
-            document.getElementById('modalBookingCode').textContent = bookingData.bookingCode;
-            document.getElementById('modalCustomerName').textContent = bookingData.customerName;
-            document.getElementById('modalTicketCount').textContent = `${bookingData.tickets ? bookingData.tickets.length : 0} vé`;
-            document.getElementById('modalFinalAmount').textContent = formatCurrency(bookingData.finalAmount);
-            document.getElementById('cashBookingCodeNotice').textContent = bookingData.bookingCode;
+            const bookingCode = bookingData.bookingCode || 'BK-ONLINE';
+            const customerName = bookingData.customerName || (currentCustomer ? currentCustomer.fullName : 'Khách hàng');
+            const ticketCount = (bookingData.tickets && bookingData.tickets.length > 0)
+                ? bookingData.tickets.length
+                : (selectedSeats.length > 0 ? selectedSeats.length : 1);
+            const finalAmount = bookingData.finalAmount || 0;
+
+            document.getElementById('modalBookingCode').textContent = bookingCode;
+            document.getElementById('modalCustomerName').textContent = customerName;
+            document.getElementById('modalTicketCount').textContent = `${ticketCount} vé`;
+            document.getElementById('modalFinalAmount').textContent = formatCurrency(finalAmount);
+            document.getElementById('cashBookingCodeNotice').textContent = bookingCode;
 
             // Mặc định chọn BANK (Chuyển khoản VietQR)
             const bankRadio = document.querySelector('input[name="payMethod"][value="BANK"]');
@@ -1363,10 +1384,14 @@
             if (!currentBooking) return;
 
             const finalAmount = Math.round(currentBooking.finalAmount);
-            // Lấy ticketId thực tế của vé:
-            const ticketId = (currentBooking.tickets && currentBooking.tickets.length > 0)
-                ? currentBooking.tickets[0].ticketId
-                : currentBooking.bookingId;
+            // Lấy ticketId hoặc ticketCode thực tế của vé
+            let ticketId = currentBooking.ticketId;
+            if (!ticketId && currentBooking.tickets && currentBooking.tickets.length > 0) {
+                ticketId = currentBooking.tickets[0].ticketCode || currentBooking.tickets[0].ticketId;
+            }
+            if (!ticketId) {
+                ticketId = currentBooking.bookingCode || currentBooking.bookingId;
+            }
 
             const transferMemo = `THANH TOAN VE ${ticketId}`;
 
